@@ -9,7 +9,9 @@ effect on the PC side is consistent with that of the device.
 Now we have also added a picture of the device shell as the border background, 
 which can better simulate the display effect on the device side.
 
-![lv_m5stack_fire](./images/lv_m5stack_fire.gif)
+<div align=center>
+<img src="images/lv_m5stack_fire.gif" width="25%"><img src="images/lv_m5stack_core2.gif" width="25%"><img src="images/lv_m5stack_cores3.gif" width="25%">
+</div>
 
 ## How to install & use demo
 
