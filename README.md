@@ -1,7 +1,5 @@
 # Running the M5Stack LVGL device emulator via PlatformIO
 
-:warning: Currently only tested on MacOS.
-
 Now it is more convenient to design [LVGL](https://github.com/lvgl/lvgl) UI on PC, 
 which can reduce the time wasted in flash the firmware.
 Using [M5GFX](https://github.com/m5stack/M5GFX), we can ensure that the display
@@ -51,7 +49,7 @@ Use [Homebrew](https://brew.sh/):
 brew install sdl2
 ```
 Note: 
-On MacOS you need to include (uncomment in provided example platformio.ini file) these lines in your platformio.ini file to import the drivers:
+On MacOS you need to include (uncomment in provided example [platformio.ini](./platformio.ini) file) these lines in your platformio.ini file to import the drivers:
 ```
   ; SDL2 includes
   !find /opt/homebrew/Cellar/sdl2 -name "include" | sed "s/^/-I /"
@@ -75,6 +73,20 @@ variable (usually `C:\msys64\mingw64\bin`). See [instruction, 4](https://code.vi
 If you plan to upload firmware & debug hardware, read notes in PlatformIO
 [install docs](http://docs.platformio.org/en/latest/installation.html#troubleshooting).
 
+
+### Choose LVGL version(V8 or V9)
+
+If you want build with lvgl v8, this was default option, you don't need change any files!
+But if you want try the lvgl  latest version v9, you need to modify the version control macro definition in [platformio.ini](./platformio.ini) file as:
+```
+  -D LVGL_USE_V8=0  ; lvgl v8
+  -D LVGL_USE_V9=1  ; lvgl v9
+```
+And don't forget to modify the links of the dependent libs to this:
+```
+  ; lvgl=https://github.com/lvgl/lvgl/archive/refs/tags/v8.3.0.zip  ; lvgl v8
+  lvgl=https://github.com/lvgl/lvgl#master  ; lvgl v9
+```
 
 ### Build/Run
 
