@@ -101,3 +101,15 @@ To build/execute, on PlafomIO tab expand desired env and click target:
 <img src="support/pio_explorer.png" width="60%">
 
 Note, for emulator env `upload` also executes compiled binary.
+
+### Zoom and rotate the window at runtime
+
+The emulator support zoom and rotate the window at runtime. So you can easily zoom and rotate the window to view UI details.
+
+1. Zoom
+
+    Press :keyboard: **1 ~ 6** number key to zoom the window size.
+
+1. Rotate
+
+    Press :keyboard: **"L"** **"R"** letter key to rotate the window.
