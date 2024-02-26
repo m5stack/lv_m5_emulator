@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 void lvgl_port_init(M5GFX &gfx);
-void lvgl_port_lock(void);
+bool lvgl_port_lock(void);
 void lvgl_port_unlock(void);
 
 #ifdef __cplusplus

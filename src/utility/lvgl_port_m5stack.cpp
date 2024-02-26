@@ -21,7 +21,6 @@ static void lvgl_tick_timer(void *arg) {
 }
 static void lvgl_rtos_task(void *pvParameter) {
     (void)pvParameter;
-    xGuiSemaphore = xSemaphoreCreateMutex();
     while (1) {
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
             lv_timer_handler();
@@ -40,7 +39,6 @@ static uint32_t lvgl_tick_timer(uint32_t interval, void *param) {
 
 static int lvgl_sdl_thread(void *data) {
     (void)data;
-    xGuiMutex = SDL_CreateMutex();
     while (1) {
         if (SDL_LockMutex(xGuiMutex) == 0) {
             lv_timer_handler();
@@ -53,6 +51,7 @@ static int lvgl_sdl_thread(void *data) {
 #endif
 
 #if LVGL_USE_V8 == 1
+static lv_disp_draw_buf_t draw_buf;
 static void lvgl_flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
     M5GFX &gfx = *(M5GFX *)disp->user_data;
     int w      = (area->x2 - area->x1 + 1);
@@ -84,7 +83,6 @@ static void lvgl_read_cb(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
 void lvgl_port_init(M5GFX &gfx) {
     lv_init();
 
-    static lv_disp_draw_buf_t *draw_buf = (lv_disp_draw_buf_t *)malloc(sizeof(lv_disp_draw_buf_t));
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
 #if defined(BOARD_HAS_PSRAM)
     static lv_color_t *buf1 =
@@ -99,7 +97,7 @@ void lvgl_port_init(M5GFX &gfx) {
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
     static lv_color_t *buf1 = (lv_color_t *)malloc(gfx.width() * LV_BUFFER_LINE * sizeof(lv_color_t));
     static lv_color_t *buf2 = (lv_color_t *)malloc(gfx.width() * LV_BUFFER_LINE * sizeof(lv_color_t));
-    lv_disp_draw_buf_init(draw_buf, buf1, buf2, gfx.width() * LV_BUFFER_LINE);
+    lv_disp_draw_buf_init(&draw_buf, buf1, buf2, gfx.width() * LV_BUFFER_LINE);
 #endif
 
     static lv_disp_drv_t disp_drv;
@@ -107,7 +105,7 @@ void lvgl_port_init(M5GFX &gfx) {
     disp_drv.hor_res   = gfx.width();
     disp_drv.ver_res   = gfx.height();
     disp_drv.flush_cb  = lvgl_flush_cb;
-    disp_drv.draw_buf  = draw_buf;
+    disp_drv.draw_buf  = &draw_buf;
     disp_drv.user_data = &gfx;
     lv_disp_drv_register(&disp_drv);
 
@@ -119,12 +117,14 @@ void lvgl_port_init(M5GFX &gfx) {
     lv_indev_t *indev   = lv_indev_drv_register(&indev_drv);
 
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
+    xGuiSemaphore                                     = xSemaphoreCreateMutex();
     const esp_timer_create_args_t periodic_timer_args = {.callback = &lvgl_tick_timer, .name = "lvgl_tick_timer"};
     esp_timer_handle_t periodic_timer;
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, LV_TICK_PERIOD_MS * 1000));
-    xTaskCreate(lv_task_handler, "lv_task", 4096, NULL, 1, NULL);
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 10 * 1000));
+    xTaskCreate(lvgl_rtos_task, "lvgl_rtos_task", 4096, NULL, 1, NULL);
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
+    xGuiMutex = SDL_CreateMutex();
     SDL_AddTimer(10, lvgl_tick_timer, NULL);
     SDL_CreateThread(lvgl_sdl_thread, "lvgl_sdl_thread", NULL);
 #endif
@@ -198,23 +198,25 @@ void lvgl_port_init(M5GFX &gfx) {
     lv_indev_set_display(indev, disp);
 
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
+    xGuiSemaphore                                     = xSemaphoreCreateMutex();
     const esp_timer_create_args_t periodic_timer_args = {.callback = &lvgl_tick_timer, .name = "lvgl_tick_timer"};
     esp_timer_handle_t periodic_timer;
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, LV_TICK_PERIOD_MS * 1000));
-    xTaskCreate(lv_task_handler, "lv_task", 4096, NULL, 1, NULL);
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 10 * 1000));
+    xTaskCreate(lvgl_rtos_task, "lvgl_rtos_task", 4096, NULL, 1, NULL);
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
+    xGuiMutex = SDL_CreateMutex();
     SDL_AddTimer(10, lvgl_tick_timer, NULL);
     SDL_CreateThread(lvgl_sdl_thread, "lvgl_sdl_thread", NULL);
 #endif
 }
 #endif
 
-void lvgl_port_lock(void) {
+bool lvgl_port_lock(void) {
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
-    xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
+    return xSemaphoreTake(xGuiSemaphore, portMAX_DELAY) == pdTRUE ? true : false;
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
-    SDL_LockMutex(xGuiMutex);
+    return SDL_LockMutex(xGuiMutex) == 0 ? true : false;
 #endif
 }
 
