@@ -8,7 +8,7 @@ Now we have also added a picture of the device shell as the border background,
 which can better simulate the display effect on the device side.
 
 <div align=center>
-<img src="images/lv_m5stack_fire.gif" width="25%"><img src="images/lv_m5stack_core2.gif" width="25%"><img src="images/lv_m5stack_cores3.gif" width="25%">
+<img src="images/lv_m5stack_fire.gif" width="25%"><img src="images/lv_m5stack_core2.gif" width="25%"><img src="images/lv_m5stack_cores3.gif" width="25%"><img src="images/lv_m5stack_dial.gif" width="24.78%">
 </div>
 
 ## How to install & use demo
