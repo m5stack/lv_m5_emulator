@@ -41,19 +41,24 @@ Note:
 - If you have conflicts on `libsdl2-dev:i386` install, remove 64-bits version
   and dependencies first.
 
-**MacOS**
+**macOS**
 
 Use [Homebrew](https://brew.sh/):
 
 ```sh
 brew install sdl2 pkg-config
 ```
+
 Note: 
-On MacOS you need to include (uncomment in provided example [platformio.ini](./platformio.ini) file) these lines in your platformio.ini file to import the drivers:
+On macOS you need to include (uncomment in provided example [platformio.ini](./platformio.ini) file) these lines in your platformio.ini file to import the drivers: 
 ```
   ; SDL2 includes
   !pkg-config --cflags SDL2
   !pkg-config --libs SDL2
+```
+If your Mac has Mx chip (arm64 architecture), you also need to include (uncomment) this line in your platformio.ini file: 
+```
+  ; -arch arm64
 ```
 
 **Windows**
@@ -85,7 +90,7 @@ But if you want try the lvgl  latest version v9, you need to modify the version 
 And don't forget to modify the links of the dependent libs to this:
 ```
   ; lvgl=https://github.com/lvgl/lvgl/archive/refs/tags/v8.3.0.zip  ; lvgl v8
-  lvgl=https://github.com/lvgl/lvgl#master  ; lvgl v9
+  lvgl=https://github.com/lvgl/lvgl#master                          ; lvgl v9
 ```
 
 ### Build/Run
