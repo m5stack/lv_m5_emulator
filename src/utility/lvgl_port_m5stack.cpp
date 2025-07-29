@@ -1,4 +1,6 @@
 #include "lvgl_port_m5stack.hpp"
+#include <cstdlib>  // for aligned_alloc
+#include <cstring>  // for memset
 
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
 static SemaphoreHandle_t xGuiSemaphore;
@@ -53,14 +55,35 @@ static int lvgl_sdl_thread(void *data) {
 #if LVGL_USE_V8 == 1
 static lv_disp_draw_buf_t draw_buf;
 static void lvgl_flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
-    M5GFX &gfx = *(M5GFX *)disp->user_data;
-    int w      = (area->x2 - area->x1 + 1);
-    int h      = (area->y2 - area->y1 + 1);
+    M5GFX &gfx      = *(M5GFX *)disp->user_data;
+    int w           = (area->x2 - area->x1 + 1);
+    int h           = (area->y2 - area->y1 + 1);
+    uint32_t pixels = w * h;
 
     gfx.startWrite();
     gfx.setAddrWindow(area->x1, area->y1, w, h);
-    gfx.writePixels((lgfx::rgb565_t *)&color_p->full, w * h);
-    // gfx.writePixels((lgfx::swap565_t *)&color_p->full, w * h);  // swap red and blue
+
+    // Critical fix: Use safe pixel writing method to avoid M5GFX SIMD optimizations
+    // Break large transfers into small chunks to avoid problematic copy_rgb_fast function
+    const uint32_t SAFE_CHUNK_SIZE = 8192;  // 8K pixels per chunk, suitable for small buffer settings
+
+    if (pixels > SAFE_CHUNK_SIZE) {
+        // Chunked transmission for large data
+        const lgfx::rgb565_t *src = (const lgfx::rgb565_t *)color_p;
+        uint32_t remaining        = pixels;
+        uint32_t offset           = 0;
+
+        while (remaining > 0) {
+            uint32_t chunk_size = (remaining > SAFE_CHUNK_SIZE) ? SAFE_CHUNK_SIZE : remaining;
+            gfx.writePixels(src + offset, chunk_size);
+            offset += chunk_size;
+            remaining -= chunk_size;
+        }
+    } else {
+        // Direct transmission for small data
+        gfx.writePixels((lgfx::rgb565_t *)color_p, pixels);
+    }
+
     gfx.endWrite();
 
     lv_disp_flush_ready(disp);
@@ -95,9 +118,29 @@ void lvgl_port_init(M5GFX &gfx) {
     lv_disp_draw_buf_init(&draw_buf, buf1, NULL, gfx.width() * LV_BUFFER_LINE);
 #endif
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
-    static lv_color_t *buf1 = (lv_color_t *)malloc(gfx.width() * LV_BUFFER_LINE * sizeof(lv_color_t));
-    static lv_color_t *buf2 = (lv_color_t *)malloc(gfx.width() * LV_BUFFER_LINE * sizeof(lv_color_t));
-    lv_disp_draw_buf_init(&draw_buf, buf1, buf2, gfx.width() * LV_BUFFER_LINE);
+    const uint32_t buf_pixels = gfx.width() * LV_BUFFER_LINE;
+    // Moderate safety margin, combined with chunked transmission strategy, suitable for small buffers
+    const uint32_t extra_pixels = 1024;        // 1024 pixels safety margin (2KB)
+    const uint32_t safe_pixels  = buf_pixels;  // LVGL can use all allocated pixels
+
+    // Use aligned allocation to ensure memory boundary alignment, reducing SIMD access issues
+    const size_t alignment    = 64;  // 64-byte alignment
+    const size_t total_bytes  = (buf_pixels + extra_pixels) * sizeof(lv_color_t);
+    const size_t aligned_size = (total_bytes + alignment - 1) & ~(alignment - 1);
+
+    static lv_color_t *buf1 = static_cast<lv_color_t *>(aligned_alloc(alignment, aligned_size));
+    static lv_color_t *buf2 = static_cast<lv_color_t *>(aligned_alloc(alignment, aligned_size));
+
+    if (!buf1 || !buf2) {
+        printf("ERROR: Failed to allocate aligned memory buffers\n");
+        return;
+    }
+
+    // Clear buffers to avoid issues caused by random data
+    memset(buf1, 0, aligned_size);
+    memset(buf2, 0, aligned_size);
+
+    lv_disp_draw_buf_init(&draw_buf, buf1, buf2, safe_pixels);
 #endif
 
     static lv_disp_drv_t disp_drv;
@@ -133,12 +176,34 @@ void lvgl_port_init(M5GFX &gfx) {
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
     M5GFX &gfx = *(M5GFX *)lv_display_get_driver_data(disp);
 
-    uint32_t w = (area->x2 - area->x1 + 1);
-    uint32_t h = (area->y2 - area->y1 + 1);
+    uint32_t w      = (area->x2 - area->x1 + 1);
+    uint32_t h      = (area->y2 - area->y1 + 1);
+    uint32_t pixels = w * h;
 
     gfx.startWrite();
     gfx.setAddrWindow(area->x1, area->y1, w, h);
-    gfx.writePixels((lgfx::rgb565_t *)px_map, w * h);
+
+    // Critical fix: Use safe pixel writing method to avoid M5GFX SIMD optimizations
+    // Break large transfers into small chunks to avoid problematic copy_rgb_fast function
+    const uint32_t SAFE_CHUNK_SIZE = 8192;  // 8K pixels per chunk, suitable for small buffer settings
+
+    if (pixels > SAFE_CHUNK_SIZE) {
+        // Chunked transmission for large data
+        const lgfx::rgb565_t *src = (const lgfx::rgb565_t *)px_map;
+        uint32_t remaining        = pixels;
+        uint32_t offset           = 0;
+
+        while (remaining > 0) {
+            uint32_t chunk_size = (remaining > SAFE_CHUNK_SIZE) ? SAFE_CHUNK_SIZE : remaining;
+            gfx.writePixels(src + offset, chunk_size);
+            offset += chunk_size;
+            remaining -= chunk_size;
+        }
+    } else {
+        // Direct transmission for small data
+        gfx.writePixels((lgfx::rgb565_t *)px_map, pixels);
+    }
+
     gfx.endWrite();
 
     lv_display_flush_ready(disp);
@@ -180,10 +245,29 @@ void lvgl_port_init(M5GFX &gfx) {
     lv_display_set_buffers(disp, (void *)buf1, NULL, gfx.width() * LV_BUFFER_LINE, LV_DISPLAY_RENDER_MODE_PARTIAL);
 #endif
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
-    static uint8_t *buf1 = (uint8_t *)malloc(gfx.width() * LV_BUFFER_LINE * 2);
-    static uint8_t *buf2 = (uint8_t *)malloc(gfx.width() * LV_BUFFER_LINE * 2);
-    lv_display_set_buffers(disp, (void *)buf1, (void *)buf2, gfx.width() * LV_BUFFER_LINE * 2,
-                           LV_DISPLAY_RENDER_MODE_PARTIAL);
+    const uint32_t buf_pixels = gfx.width() * LV_BUFFER_LINE;
+    const uint32_t buf_bytes  = buf_pixels * 2;  // LVGL v9 uses bytes (2 bytes per pixel for RGB565)
+    // Moderate safety margin, combined with chunked transmission strategy, suitable for small buffers
+    const uint32_t extra_bytes = 1024 * 2;  // 1024 pixels safety margin (2KB)
+
+    // Use aligned allocation to ensure memory boundary alignment, reducing SIMD access issues
+    const size_t alignment    = 64;  // 64-byte alignment
+    const size_t total_bytes  = buf_bytes + extra_bytes;
+    const size_t aligned_size = (total_bytes + alignment - 1) & ~(alignment - 1);
+
+    static uint8_t *buf1 = static_cast<uint8_t *>(aligned_alloc(alignment, aligned_size));
+    static uint8_t *buf2 = static_cast<uint8_t *>(aligned_alloc(alignment, aligned_size));
+
+    if (!buf1 || !buf2) {
+        printf("ERROR: Failed to allocate aligned memory buffers\n");
+        return;
+    }
+
+    // Clear buffers to avoid issues caused by random data
+    memset(buf1, 0, aligned_size);
+    memset(buf2, 0, aligned_size);
+
+    lv_display_set_buffers(disp, (void *)buf1, (void *)buf2, buf_bytes, LV_DISPLAY_RENDER_MODE_PARTIAL);
 #endif
 
     static lv_indev_t *indev = lv_indev_create();
