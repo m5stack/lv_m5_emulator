@@ -7,7 +7,8 @@ extern void user_app(void);
 
 M5GFX gfx;
 
-void setup(void) {
+void setup(void)
+{
     gfx.init();
 
     lvgl_port_init(gfx);
@@ -15,7 +16,8 @@ void setup(void) {
     user_app();
 }
 
-void loop(void) {
+void loop(void)
+{
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
     delay(10);
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))

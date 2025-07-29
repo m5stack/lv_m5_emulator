@@ -2,7 +2,8 @@
 #include "lvgl_port_m5stack.hpp"
 #include "demos/lv_demos.h"
 
-void user_app(void) {
+void user_app(void)
+{
     // You can test the lvgl default demo
     // /*
     if (lvgl_port_lock()) {

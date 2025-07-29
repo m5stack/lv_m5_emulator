@@ -17,11 +17,13 @@ extern "C" {
 #endif
 
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
-static void lvgl_tick_timer(void *arg) {
+static void lvgl_tick_timer(void *arg)
+{
     (void)arg;
     lv_tick_inc(10);
 }
-static void lvgl_rtos_task(void *pvParameter) {
+static void lvgl_rtos_task(void *pvParameter)
+{
     (void)pvParameter;
     while (1) {
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
@@ -32,14 +34,16 @@ static void lvgl_rtos_task(void *pvParameter) {
     }
 }
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
-static uint32_t lvgl_tick_timer(uint32_t interval, void *param) {
+static uint32_t lvgl_tick_timer(uint32_t interval, void *param)
+{
     (void)interval;
     (void)param;
     lv_tick_inc(10);
     return 10;
 }
 
-static int lvgl_sdl_thread(void *data) {
+static int lvgl_sdl_thread(void *data)
+{
     (void)data;
     while (1) {
         if (SDL_LockMutex(xGuiMutex) == 0) {
@@ -54,7 +58,8 @@ static int lvgl_sdl_thread(void *data) {
 
 #if LVGL_USE_V8 == 1
 static lv_disp_draw_buf_t draw_buf;
-static void lvgl_flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
+static void lvgl_flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
+{
     M5GFX &gfx      = *(M5GFX *)disp->user_data;
     int w           = (area->x2 - area->x1 + 1);
     int h           = (area->y2 - area->y1 + 1);
@@ -89,7 +94,8 @@ static void lvgl_flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t
     lv_disp_flush_ready(disp);
 }
 
-static void lvgl_read_cb(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
+static void lvgl_read_cb(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+{
     M5GFX &gfx = *(M5GFX *)indev_driver->user_data;
     uint16_t touchX, touchY;
 
@@ -103,7 +109,8 @@ static void lvgl_read_cb(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     }
 }
 
-void lvgl_port_init(M5GFX &gfx) {
+void lvgl_port_init(M5GFX &gfx)
+{
     lv_init();
 
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
@@ -173,7 +180,8 @@ void lvgl_port_init(M5GFX &gfx) {
 #endif
 }
 #elif LVGL_USE_V9 == 1
-static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
+static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
     M5GFX &gfx = *(M5GFX *)lv_display_get_driver_data(disp);
 
     uint32_t w      = (area->x2 - area->x1 + 1);
@@ -209,7 +217,8 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     lv_display_flush_ready(disp);
 }
 
-static void lvgl_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
+static void lvgl_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
     M5GFX &gfx = *(M5GFX *)lv_indev_get_driver_data(indev);
     uint16_t touchX, touchY;
 
@@ -223,7 +232,8 @@ static void lvgl_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     }
 }
 
-void lvgl_port_init(M5GFX &gfx) {
+void lvgl_port_init(M5GFX &gfx)
+{
     lv_init();
 
     static lv_display_t *disp = lv_display_create(gfx.width(), gfx.height());
@@ -296,7 +306,8 @@ void lvgl_port_init(M5GFX &gfx) {
 }
 #endif
 
-bool lvgl_port_lock(void) {
+bool lvgl_port_lock(void)
+{
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
     return xSemaphoreTake(xGuiSemaphore, portMAX_DELAY) == pdTRUE ? true : false;
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
@@ -304,7 +315,8 @@ bool lvgl_port_lock(void) {
 #endif
 }
 
-void lvgl_port_unlock(void) {
+void lvgl_port_unlock(void)
+{
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
     xSemaphoreGive(xGuiSemaphore);
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
