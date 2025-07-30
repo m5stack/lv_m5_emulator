@@ -118,3 +118,14 @@ The emulator support zoom and rotate the window at runtime. So you can easily zo
 1. Rotate
 
     Press :keyboard: **"L"** **"R"** letter key to rotate the window.
+
+## Tab5 Board – Key Notes
+
+1. **Adjust `LV_MEM_SIZE` when needed**  
+   The default LVGL heap may be insufficient for complex screens. Increase this value to prevent allocation failures.
+
+2. **Increase the `lvgl_rtos_task` stack size**  
+   LVGL tasks can overflow the default stack. Allocate a larger stack to ensure GUI stability.
+
+3. **Fine-tune `LV_BUFFER_LINE` for faster rendering**  
+   A larger draw buffer (more lines) reduces flush operations and improves drawing speed.
