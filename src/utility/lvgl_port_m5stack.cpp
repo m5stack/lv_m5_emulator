@@ -2,6 +2,10 @@
 #include <cstdlib>  // for aligned_alloc
 #include <cstring>  // for memset
 
+#ifdef USE_EEZ_STUDIO
+#include "ui/ui.h"
+#endif
+
 #if defined(ARDUINO) && defined(ESP_PLATFORM)
 static SemaphoreHandle_t xGuiSemaphore;
 #elif !defined(ARDUINO) && (__has_include(<SDL2/SDL.h>) || __has_include(<SDL.h>))
@@ -28,6 +32,9 @@ static void lvgl_rtos_task(void *pvParameter)
     while (1) {
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
             lv_timer_handler();
+#ifdef USE_EEZ_STUDIO
+            ui_tick();
+#endif
             xSemaphoreGive(xGuiSemaphore);
         }
         vTaskDelay(pdMS_TO_TICKS(10));

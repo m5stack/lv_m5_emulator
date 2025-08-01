@@ -129,3 +129,30 @@ The emulator support zoom and rotate the window at runtime. So you can easily zo
 
 3. **Fine-tune `LV_BUFFER_LINE` for faster rendering**  
    A larger draw buffer (more lines) reduces flush operations and improves drawing speed.
+
+4. **Use the standard C allocator for large pools**  
+   Set `LV_USE_STDLIB_MALLOC = LV_STDLIB_CLIB` to make LVGL call the system’s `malloc`/`free`, allowing bigger memory pools when required.
+
+
+## EEZ Studio – Key Notes
+
+1. **Choose the LVGL version and display resolution in the settings**  
+   <div align=center>
+   <img src="support/eez_studio_setting_01.png"width="70%">
+   </div>
+
+2. **Update LVGL header includes**  
+   <div align=center>
+   <img src="support/eez_studio_setting_02.png"width="70%">
+   </div>
+
+3. **Copy the eez studio project `ui` folder into `src` path**  
+   <div align=center>
+   <img src="support/eez_studio_ui_import.png"width="30%">
+   </div>
+
+4. **Uncomment `USE_EEZ_STUDIO` in the `platformio.ini` file**
+   ```bash
+   ; EEZ Studio Project
+   ; -D USE_EEZ_STUDIO
+   ```
